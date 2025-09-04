@@ -2,6 +2,8 @@ package routes
 
 import (
 	"go_crud/controllers"
+	"go_crud/middlewares"
+	"go_crud/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,8 +17,8 @@ func SetupRouter() *gin.Engine {
         {
             users.GET("", controllers.GetUsers)
             users.GET("/:id", controllers.GetUser)
-            users.POST("", controllers.CreateUser)
-            users.PATCH("/:id", controllers.UpdateUser)
+            users.POST("", middlewares.ValidateBody(&models.CreateUserInput{}), controllers.CreateUser)
+            users.PATCH("/:id", middlewares.ValidateBody(&models.UpdateUserInput{}), controllers.UpdateUser)
             users.DELETE("/:id", controllers.DeleteUser)
         }
     }

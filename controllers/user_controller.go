@@ -1,12 +1,11 @@
 package controllers
 
 import (
-	"net/http"
+    "net/http"
+    "go_crud/database"
+    "go_crud/models"
 
-	"go_crud/database"
-	"go_crud/models"
-
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
 // Get all users
@@ -29,15 +28,9 @@ func GetUser(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"data": user})
 }
 
-// Create new user
+// Create user (validated at route level)
 func CreateUser(c *gin.Context) {
-    var input models.User
-
-    // Bind JSON & validate
-    if err := c.ShouldBindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+    input := c.MustGet("validatedBody").(*models.CreateUserInput)
 
     user := models.User{
         Name:  input.Name,
@@ -53,29 +46,34 @@ func CreateUser(c *gin.Context) {
     c.JSON(http.StatusCreated, gin.H{"data": user})
 }
 
-// Update user
+// Update user (partial update, validated at route level)
 func UpdateUser(c *gin.Context) {
     id := c.Param("id")
     var user models.User
 
     if err := database.DB.First(&user, id).Error; err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": err})
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
         return
     }
 
-    var input models.User
-    if err := c.ShouldBindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    input := c.MustGet("validatedBody").(*models.UpdateUserInput)
+
+    updates := map[string]interface{}{}
+    if input.Name != nil {
+        updates["name"] = *input.Name
+    }
+    if input.Email != nil {
+        updates["email"] = *input.Email
+    }
+    if input.Age != nil {
+        updates["age"] = *input.Age
+    }
+
+    if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return
     }
 
-    updatedUser := models.User{
-        Name:  input.Name,
-        Email: input.Email,
-        Age:   input.Age,
-    }
-
-    database.DB.Model(&user).Updates(updatedUser)
     c.JSON(http.StatusOK, gin.H{"data": user})
 }
 
